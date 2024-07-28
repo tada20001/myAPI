@@ -1,0 +1,26 @@
+services:
+  django_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.django
+      args:
+      - DEV=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    command: python manage.py runserver 0.0.0.0:8000
+
+
+  streamlit_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./streamlit_app:/app
+    environment:
+      - DEBUG=1
+    command: >
+      streamlit run login.py --server.port 8501 --server.address 0.0.0.0
