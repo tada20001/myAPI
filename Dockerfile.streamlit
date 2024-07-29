@@ -2,16 +2,25 @@ FROM python:3.9-slim
 
 # 시스템 의존성 설치 및 비root 사용자 생성
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    supervisor \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m streamlituser
 
 WORKDIR /app
+
 EXPOSE 8501
+
+# 환경 변수 설정
+ARG DEV=false
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBUG=${DEV}
 
 # 의존성 파일 복사 및 설치
 COPY ./requirements_streamlit.txt /tmp/requirements_streamlit.txt
-RUN pip install --no-cache-dir -r /tmp/requirements_streamlit.txt
+RUN pip install --no-cache-dir -r /tmp/requirements_streamlit.txt \
+    && rm -rf /root/.cache/pip \
+    && rm /tmp/requirements_streamlit.txt
 
 # 권한 설정
 RUN chown -R streamlituser:streamlituser /app
@@ -19,4 +28,7 @@ RUN chown -R streamlituser:streamlituser /app
 # 비root 사용자로 전환
 USER streamlituser
 
-CMD ["streamlit", "run", "/app/main.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+# 헬스체크 설정 : 추후 $STREAMLIT_HOSTNAME 변수 사용
+# HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "/app/login.py", "--server.port", "8501", "--server.address", "0.0.0.0"]

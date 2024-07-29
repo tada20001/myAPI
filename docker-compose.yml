@@ -4,24 +4,67 @@ services:
       context: .
       dockerfile: Dockerfile.django
       args:
-      - DEV=true
+        - DEV=true
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=devdb
+      - DB_USER=devuser
+      - DB_PASS=changeme
+      - DEBUG=1
+    depends_on:
+      - db
+    networks:
+      - app_network
 
 
   streamlit_app:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
+      args:
+        - DEV=true
     ports:
       - "8501:8501"
     volumes:
       - ./streamlit_app:/app
-    environment:
-      - DEBUG=1
     command: >
       sh -c "streamlit run login.py --server.port 8501 --server.address 0.0.0.0"
+    environment:
+      - DJANGO_HOST=django_app
+      - DJANGO_PORT=8000
+      - DJANGO_ALLOWED_HOST=django_app
+      - DB_PORT=5432
+
+    depends_on:
+      - django_app
+    networks:
+      - app_network
+
+
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=devdb
+      - POSTGRES_USER=devuser
+      - POSTGRES_PASSWORD=changeme
+    networks:
+      - app_network
+      
+
+volumes:
+  dev-db-data:
+
+
+networks:
+  app_network:
+    driver: bridge
